@@ -1,33 +1,22 @@
-# BARRA CLOUD - Samba (SMB) Photo & Video Viewer
+<div align="center">
+<img width="1200" height="475" alt="GHBanner" src="https://ai.google.dev/static/site-assets/images/share-ais-513315318.png" />
+</div>
 
-**BARRA CLOUD** adalah aplikasi Android native modern yang dirancang khusus sebagai **SMB Photo & Video Streaming Viewer** dengan fokus utama pada performa tinggi, tampilan galeri modern, dan **buffering yang sangat minimal**.
+# Run and deploy your AI Studio app
 
----
+This contains everything you need to run your app locally.
 
-## 🚀 Fitur Utama
+View your app in AI Studio: https://ai.studio/apps/8d770085-c9ff-4633-9f5d-c1ad732ac6c6
 
-- **Koneksi SMB2 / SMB3**: Dukungan autentikasi server SMB, custom port, remember login, dan auto-connect otomatis.
-- **SMB Streaming Tanpa Download Penuh**: Server HTTP Proxy lokal internal (NanoHTTPD) melayani permintaan `Byte Range` ke ExoPlayer & Coil.
-- **Viewer Foto Responsif**:
-  - Format: JPG, JPEG, PNG, WEBP, HEIC, GIF (Animasi), RAW Preview.
-  - Pager swipe kiri/kanan, Double-tap zoom, Pinch zoom, Rotasi 90°, dan mode **Slideshow** otomatis.
-  - Background prefetch gambar berikutnya untuk perpindahan instan.
-- **Media3 ExoPlayer Video Player**:
-  - Format: MP4, MKV, AVI, MOV, M4V, 3GP, WEBM, TS, MPEG.
-  - Gestures: Kecerahan (sisi kiri), Volume / Position Seek (sisi kanan), Double Tap Seek (+/- 10s).
-  - Resume playback otomatis & pengingat posisi terakhir.
-  - Kecepatan pemutaran: 0.5x, 1x, 1.25x, 1.5x, 2x, Auto-landscape, & Picture-in-Picture (PiP).
-- **Galeri & Pencarian Realtime**: Grid responsif (2 - 5 kolom), tab Favorit (Room DB), dan Riwayat Terakhir Dilihat.
-- **Keamanan Credentials**: Menggunakan `EncryptedSharedPreferences`.
+## Run Locally
 
----
+**Prerequisites:**  [Android Studio](https://developer.android.com/studio)
 
-## 🛠️ Arsitektur & Tech Stack
 
-- **Bahasa**: Kotlin 100%
-- **UI Framework**: Jetpack Compose + Material 3
-- **Database**: Room Database (Favorites & Recents)
-- **Media Player**: AndroidX Media3 ExoPlayer
-- **Image Loader**: Coil dengan Disk & Memory Cache
-- **Arsitektur**: MVVM + Repository Pattern + Kotlin Coroutines & StateFlow
-- **CI/CD**: GitHub Actions (`.github/workflows/build.yml`)
+1. Open Android Studio
+2. Select **Open** and choose the directory containing this project
+3. Allow Android Studio to fix any incompatibilities as it imports the project.
+4. Create a file named `.env` in the project directory and set `GEMINI_API_KEY` in that file to your Gemini API key (see `.env.example` for an example)
+5. Remove this line from the app's `build.gradle.kts` file: `signingConfig = signingConfigs.getByName("debugConfig")`
+6. Run the app on an emulator or physical device
+7. If you have already published your app in AI Studio, please [request upload key reset](https://support.google.com/googleplay/android-developer/answer/9842756#zippy=%2Crequest-an-upload-key-reset) in Google Play Console.

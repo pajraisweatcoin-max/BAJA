@@ -14,7 +14,7 @@ android {
   compileSdk { version = release(36) { minorApiLevel = 1 } }
 
   defaultConfig {
-    applicationId = "com.example"
+    applicationId = "com.aistudio.barracloud.x9k2p"
     minSdk = 24
     targetSdk = 36
     versionCode = 1
@@ -94,13 +94,6 @@ dependencies {
   implementation(libs.androidx.room.ktx)
   implementation(libs.androidx.room.runtime)
   implementation(libs.coil.compose)
-  implementation(libs.coil.gif)
-  implementation(libs.media3.exoplayer)
-  implementation(libs.media3.ui)
-  implementation(libs.media3.common)
-  implementation(libs.smbj)
-  implementation(libs.security.crypto)
-  implementation(libs.nanohttpd)
   implementation(libs.converter.moshi)
   implementation(libs.firebase.ai)
   // Uncomment to use Firestore:
