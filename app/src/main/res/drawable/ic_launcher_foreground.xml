@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Cloud base icon centered -->
+    <path
+        android:fillColor="#38BDF8"
+        android:pathData="M68,58c4.42,0 8,-3.58 8,-8c0,-4.07 -3.05,-7.44 -7,-7.93C68.42,37.21 63.83,34 58.5,34c-5.52,0 -10.15,3.48 -11.83,8.38C45.89,42.14 44.97,42 44,42c-4.42,0 -8,3.58 -8,8c0,4.42 3.58,8 8,8h24z" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M48,50l5,-6.5l4,5l5,-7l7,8.5H48z" />
+</vector>
