@@ -29,9 +29,15 @@ class SambaClientManager(private val context: Context) {
     suspend fun connect(config: SambaConfig): Result<Boolean> = withContext(Dispatchers.IO) {
         try {
             close()
+            if (config.host.isBlank()) {
+                return@withContext Result.failure(Exception("Host / IP Address tidak boleh kosong."))
+            }
+            if (config.shareName.isBlank()) {
+                return@withContext Result.failure(Exception("Share Name tidak boleh kosong. Isikan nama share Samba/SMB (contoh: HDD, Shared)."))
+            }
             val smbConfig = SmbConfig.builder()
-                .withTimeout(5, TimeUnit.SECONDS)
-                .withSoTimeout(5, TimeUnit.SECONDS)
+                .withTimeout(10, TimeUnit.SECONDS)
+                .withSoTimeout(10, TimeUnit.SECONDS)
                 .build()
 
             client = SMBClient(smbConfig)
@@ -51,10 +57,10 @@ class SambaClientManager(private val context: Context) {
             if (isConnectedInternal) {
                 Result.success(true)
             } else {
-                Result.failure(Exception("Could not connect to share '${config.shareName}'"))
+                Result.failure(Exception("Tidak dapat terhubung ke Share Name '${config.shareName}'"))
             }
         } catch (e: Exception) {
-            Log.e("SambaClientManager", "SMB Connection failed: ${e.message}")
+            Log.e("SambaClientManager", "SMB Connection failed: ${e.message}", e)
             isConnectedInternal = false
             Result.failure(e)
         }
@@ -67,13 +73,13 @@ class SambaClientManager(private val context: Context) {
         val shareInstance = share
         if (shareInstance != null && isConnectedInternal) {
             try {
-                val cleanPath = path.trim('/').replace('/', '\\')
+                val cleanPath = if (path.isBlank() || path == "/") "" else path.trim('/').replace('/', '\\')
                 val fileInfos = shareInstance.list(cleanPath)
                 return@withContext fileInfos
                     .filter { !it.fileName.startsWith(".") && it.fileName != "." && it.fileName != ".." }
                     .map { info -> parseSmbFileInfo(info, path) }
             } catch (e: Exception) {
-                Log.w("SambaClientManager", "Error listing live SMB share: ${e.message}")
+                Log.w("SambaClientManager", "Error listing live SMB share: ${e.message}", e)
             }
         }
         
