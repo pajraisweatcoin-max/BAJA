@@ -14,7 +14,7 @@ android {
   compileSdk { version = release(36) { minorApiLevel = 1 } }
 
   defaultConfig {
-    applicationId = "com.aistudio.barracloud.gallery"
+    applicationId = "com.example"
     minSdk = 24
     targetSdk = 36
     versionCode = 1
@@ -24,24 +24,18 @@ android {
   }
 
   signingConfigs {
-    val uploadKeyFile = file(System.getenv("KEYSTORE_PATH") ?: "${rootDir}/my-upload-key.jks")
-    if (uploadKeyFile.exists()) {
-      create("release") {
-        storeFile = uploadKeyFile
-        storePassword = System.getenv("STORE_PASSWORD")
-        keyAlias = System.getenv("KEY_ALIAS") ?: "upload"
-        keyPassword = System.getenv("KEY_PASSWORD")
-      }
+    create("release") {
+      val keystorePath = System.getenv("KEYSTORE_PATH") ?: "${rootDir}/my-upload-key.jks"
+      storeFile = file(keystorePath)
+      storePassword = System.getenv("STORE_PASSWORD")
+      keyAlias = "upload"
+      keyPassword = System.getenv("KEY_PASSWORD")
     }
-
-    val debugKeystoreFile = file("${rootDir}/debug.keystore")
-    if (debugKeystoreFile.exists()) {
-      create("debugConfig") {
-        storeFile = debugKeystoreFile
-        storePassword = "android"
-        keyAlias = "androiddebugkey"
-        keyPassword = "android"
-      }
+    create("debugConfig") {
+      storeFile = file("${rootDir}/debug.keystore")
+      storePassword = "android"
+      keyAlias = "androiddebugkey"
+      keyPassword = "android"
     }
   }
 
@@ -50,19 +44,9 @@ android {
       isCrunchPngs = false
       isMinifyEnabled = false
       proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
-      val releaseConfig = signingConfigs.findByName("release")
-      if (releaseConfig != null) {
-        signingConfig = releaseConfig
-      } else {
-        signingConfig = signingConfigs.getByName("debug")
-      }
+      signingConfig = signingConfigs.getByName("release")
     }
-    debug {
-      val customDebugConfig = signingConfigs.findByName("debugConfig")
-      if (customDebugConfig != null) {
-        signingConfig = customDebugConfig
-      }
-    }
+    debug { signingConfig = signingConfigs.getByName("debugConfig") }
   }
   compileOptions {
     sourceCompatibility = JavaVersion.VERSION_11
@@ -110,11 +94,13 @@ dependencies {
   implementation(libs.androidx.room.ktx)
   implementation(libs.androidx.room.runtime)
   implementation(libs.coil.compose)
-  implementation(libs.androidx.media3.exoplayer)
-  implementation(libs.androidx.media3.ui)
-  implementation(libs.androidx.security.crypto)
+  implementation(libs.coil.gif)
+  implementation(libs.media3.exoplayer)
+  implementation(libs.media3.ui)
+  implementation(libs.media3.common)
   implementation(libs.smbj)
-  implementation(libs.androidx.work.runtime.ktx)
+  implementation(libs.security.crypto)
+  implementation(libs.nanohttpd)
   implementation(libs.converter.moshi)
   implementation(libs.firebase.ai)
   // Uncomment to use Firestore:

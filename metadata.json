@@ -1,6 +1,6 @@
 {
   "name": "BARRA CLOUD",
-  "description": "Personal SAMBA & Tailscale Cloud Gallery for Android",
+  "description": "Fast and lightweight Samba (SMB2/SMB3) Photo & Video Viewer with minimal buffering and ExoPlayer streaming.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }
