@@ -32,7 +32,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
+import android.net.Uri
 import com.example.core.model.MediaItem
+import java.io.File
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -40,6 +42,7 @@ fun FullscreenPhotoViewer(
     photos: List<MediaItem>,
     initialIndex: Int,
     onClose: () -> Unit,
+    onPrepareFile: suspend (MediaItem) -> File? = { null },
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -61,7 +64,8 @@ fun FullscreenPhotoViewer(
             val photo = photos[page]
             ZoomablePhotoItem(
                 photo = photo,
-                onTap = { showOverlay = !showOverlay }
+                onTap = { showOverlay = !showOverlay },
+                onPrepareFile = onPrepareFile
             )
         }
 
@@ -178,14 +182,32 @@ fun FullscreenPhotoViewer(
 @Composable
 private fun ZoomablePhotoItem(
     photo: MediaItem,
-    onTap: () -> Unit
+    onTap: () -> Unit,
+    onPrepareFile: suspend (MediaItem) -> File?
 ) {
     var scale by remember { mutableFloatStateOf(1f) }
     var offsetX by remember { mutableFloatStateOf(0f) }
     var offsetY by remember { mutableFloatStateOf(0f) }
     var isError by remember { mutableStateOf(false) }
 
-    val imageModel = photo.localUri ?: photo.thumbnailUrl ?: if (photo.path.startsWith("http") || photo.path.startsWith("file")) photo.path else null
+    var localFileUri by remember(photo.id) {
+        mutableStateOf<Uri?>(
+            photo.localUri?.let { Uri.parse(it) }
+                ?: if (photo.path.startsWith("http") || photo.path.startsWith("file")) Uri.parse(photo.path) else null
+        )
+    }
+    var isLoading by remember(photo.id) { mutableStateOf(localFileUri == null) }
+
+    LaunchedEffect(photo.id) {
+        if (localFileUri == null) {
+            isLoading = true
+            val downloadedFile = onPrepareFile(photo)
+            if (downloadedFile != null && downloadedFile.exists()) {
+                localFileUri = Uri.fromFile(downloadedFile)
+            }
+            isLoading = false
+        }
+    }
 
     Box(
         modifier = Modifier
@@ -204,9 +226,22 @@ private fun ZoomablePhotoItem(
             },
         contentAlignment = Alignment.Center
     ) {
-        if (!isError && imageModel != null) {
+        if (isLoading) {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
+            ) {
+                CircularProgressIndicator(color = Color(0xFF64B5F6))
+                Spacer(modifier = Modifier.height(16.dp))
+                Text(
+                    text = "Loading ${photo.name} from BARRA CLOUD...",
+                    color = Color.White,
+                    fontSize = 14.sp
+                )
+            }
+        } else if (!isError && localFileUri != null) {
             AsyncImage(
-                model = imageModel,
+                model = localFileUri,
                 contentDescription = photo.name,
                 contentScale = ContentScale.Fit,
                 onError = { isError = true },
@@ -220,7 +255,7 @@ private fun ZoomablePhotoItem(
                     )
             )
         } else {
-            // Elegant SMB Remote Photo Viewer Fallback Card
+            // Fallback information card if preview cannot be rendered
             Card(
                 shape = RoundedCornerShape(24.dp),
                 colors = CardDefaults.cardColors(containerColor = Color(0xFF1E1E24)),

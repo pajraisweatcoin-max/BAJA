@@ -41,6 +41,7 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 fun BarraCloudApp() {
+    val context = androidx.compose.ui.platform.LocalContext.current
     val settingsViewModel: SettingsViewModel = viewModel()
     val repository = remember { settingsViewModel.repository }
     val scope = rememberCoroutineScope()
@@ -49,6 +50,8 @@ fun BarraCloudApp() {
     val videos by repository.videos.collectAsStateWithLifecycle()
     val albums by repository.albums.collectAsStateWithLifecycle()
     val files by repository.files.collectAsStateWithLifecycle()
+    val currentFolderFiles by repository.currentFolderFiles.collectAsStateWithLifecycle()
+    val currentPath by repository.currentPath.collectAsStateWithLifecycle()
     val serverStats by repository.serverStats.collectAsStateWithLifecycle()
     val gridColumns by repository.gridColumns.collectAsStateWithLifecycle()
     val themeOption by repository.themeOption.collectAsStateWithLifecycle()
@@ -59,6 +62,7 @@ fun BarraCloudApp() {
     var isSettingsOpen by remember { mutableStateOf(false) }
 
     var selectedPhotoIndex by remember { mutableStateOf<Int?>(null) }
+    var photoViewerList by remember { mutableStateOf<List<MediaItem>>(emptyList()) }
     var selectedVideoItem by remember { mutableStateOf<MediaItem?>(null) }
 
     val darkTheme = when (themeOption) {
@@ -77,15 +81,17 @@ fun BarraCloudApp() {
                 )
             } else if (selectedPhotoIndex != null) {
                 FullscreenPhotoViewer(
-                    photos = photos,
+                    photos = if (photoViewerList.isNotEmpty()) photoViewerList else photos,
                     initialIndex = selectedPhotoIndex!!,
                     onClose = { selectedPhotoIndex = null },
+                    onPrepareFile = { photo -> repository.prepareLocalFile(photo) },
                     modifier = Modifier.fillMaxSize()
                 )
             } else if (selectedVideoItem != null) {
                 VideoPlayerScreen(
                     videoItem = selectedVideoItem!!,
                     onClose = { selectedVideoItem = null },
+                    onPrepareFile = { video -> repository.prepareLocalFile(video) },
                     modifier = Modifier.fillMaxSize()
                 )
             } else {
@@ -132,6 +138,7 @@ fun BarraCloudApp() {
                                 columns = gridColumns,
                                 isSyncing = isSyncing,
                                 onPhotoClick = { photo ->
+                                    photoViewerList = photos
                                     val index = photos.indexOfFirst { it.id == photo.id }
                                     selectedPhotoIndex = if (index >= 0) index else 0
                                 }
@@ -153,20 +160,57 @@ fun BarraCloudApp() {
                             )
 
                             MainTab.FILES -> FilesScreen(
-                                files = files,
+                                files = currentFolderFiles,
+                                currentPath = currentPath,
                                 isSyncing = isSyncing,
-                                onFileClick = { file ->
+                                onFolderClick = { folder ->
+                                    repository.navigateToFolder(folder.path)
+                                },
+                                onNavigateUp = {
+                                    repository.navigateUp()
+                                },
+                                onFileClick = { file: MediaItem ->
                                     if (file.isVideo) {
                                         selectedVideoItem = file
                                     } else if (file.mimeType.startsWith("image/")) {
-                                        val idx = photos.indexOfFirst { it.id == file.id }
-                                        selectedPhotoIndex = if (idx >= 0) idx else 0
+                                        photoViewerList = listOf(file)
+                                        selectedPhotoIndex = 0
                                     } else {
-                                        Toast.makeText(
-                                            settingsViewModel.getApplication(),
-                                            "Opening ${file.name}...",
-                                            Toast.LENGTH_SHORT
-                                        ).show()
+                                        scope.launch {
+                                            Toast.makeText(
+                                                context,
+                                                "Downloading ${file.name} to view...",
+                                                Toast.LENGTH_SHORT
+                                            ).show()
+                                            val localFile = repository.prepareLocalFile(file)
+                                            if (localFile != null && localFile.exists()) {
+                                                try {
+                                                    val contentUri = androidx.core.content.FileProvider.getUriForFile(
+                                                        context,
+                                                        "${context.packageName}.fileprovider",
+                                                        localFile
+                                                    )
+                                                    val intent = android.content.Intent(android.content.Intent.ACTION_VIEW).apply {
+                                                        setDataAndType(contentUri, file.mimeType.ifBlank { "*/*" })
+                                                        addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                                                        addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+                                                    }
+                                                    context.startActivity(intent)
+                                                } catch (e: Exception) {
+                                                    Toast.makeText(
+                                                        context,
+                                                        "Downloaded to cache. No app available to open ${file.name}",
+                                                        Toast.LENGTH_LONG
+                                                    ).show()
+                                                }
+                                            } else {
+                                                Toast.makeText(
+                                                    context,
+                                                    "Failed to download ${file.name} from server",
+                                                    Toast.LENGTH_SHORT
+                                                ).show()
+                                            }
+                                        }
                                     }
                                 },
                                 onDeleteFile = { file ->

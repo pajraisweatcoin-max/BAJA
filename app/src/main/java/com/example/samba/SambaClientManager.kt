@@ -4,7 +4,10 @@ import android.content.Context
 import android.util.Log
 import com.example.core.model.MediaItem
 import com.example.core.model.SambaConfig
+import com.hierynomus.msdtyp.AccessMask
 import com.hierynomus.msfscc.fileinformation.FileIdBothDirectoryInformation
+import com.hierynomus.mssmb2.SMB2CreateDisposition
+import com.hierynomus.mssmb2.SMB2ShareAccess
 import com.hierynomus.smbj.SMBClient
 import com.hierynomus.smbj.SmbConfig
 import com.hierynomus.smbj.auth.AuthenticationContext
@@ -14,6 +17,7 @@ import com.hierynomus.smbj.share.DiskShare
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
+import java.util.EnumSet
 import java.util.concurrent.TimeUnit
 
 class SambaClientManager(private val context: Context) {
@@ -85,6 +89,80 @@ class SambaClientManager(private val context: Context) {
         
         // Return empty list if server is disconnected or unreachable (no fake mock data)
         return@withContext emptyList()
+    }
+
+    suspend fun scanAllMediaFiles(
+        maxDepth: Int = 3
+    ): List<MediaItem> = withContext(Dispatchers.IO) {
+        val shareInstance = share
+        if (shareInstance == null || !isConnectedInternal) return@withContext emptyList()
+
+        val resultList = mutableListOf<MediaItem>()
+
+        fun scanDir(currentPath: String, depth: Int) {
+            if (depth > maxDepth) return
+            try {
+                val cleanPath = if (currentPath.isBlank() || currentPath == "/") "" else currentPath.trim('/').replace('/', '\\')
+                val fileInfos = shareInstance.list(cleanPath)
+                for (info in fileInfos) {
+                    val fileName = info.fileName
+                    if (fileName.startsWith(".") || fileName == "." || fileName == "..") continue
+
+                    val isDir = (info.fileAttributes and 0x10L) != 0L
+                    val fullPath = if (currentPath.isEmpty() || currentPath == "/") fileName else "$currentPath/$fileName"
+
+                    val item = parseSmbFileInfo(info, currentPath)
+                    resultList.add(item)
+
+                    if (isDir && depth < maxDepth) {
+                        scanDir(fullPath, depth + 1)
+                    }
+                }
+            } catch (e: Exception) {
+                Log.w("SambaClientManager", "Error scanning dir '$currentPath': ${e.message}")
+            }
+        }
+
+        scanDir("", 0)
+        return@withContext resultList
+    }
+
+    suspend fun downloadFileToCache(path: String, fileName: String, sizeBytes: Long): File? = withContext(Dispatchers.IO) {
+        val shareInstance = share ?: return@withContext null
+        if (!isConnectedInternal) return@withContext null
+
+        val cacheDir = File(context.cacheDir, "smb_media_cache")
+        if (!cacheDir.exists()) cacheDir.mkdirs()
+
+        val safeName = fileName.replace(Regex("[^a-zA-Z0-9._-]"), "_")
+        val cacheFile = File(cacheDir, "${path.hashCode()}_$safeName")
+
+        if (cacheFile.exists() && (sizeBytes <= 0 || cacheFile.length() == sizeBytes)) {
+            return@withContext cacheFile
+        }
+
+        try {
+            val cleanPath = path.trim('/').replace('/', '\\')
+            val smbFile = shareInstance.openFile(
+                cleanPath,
+                EnumSet.of(AccessMask.FILE_READ_DATA),
+                null,
+                SMB2ShareAccess.ALL,
+                SMB2CreateDisposition.FILE_OPEN,
+                null
+            )
+            smbFile.inputStream.use { input ->
+                cacheFile.outputStream().use { output ->
+                    input.copyTo(output)
+                }
+            }
+            smbFile.close()
+            return@withContext cacheFile
+        } catch (e: Exception) {
+            Log.e("SambaClientManager", "Failed to download SMB file '$path': ${e.message}", e)
+            if (cacheFile.exists()) cacheFile.delete()
+            return@withContext null
+        }
     }
 
     private fun parseSmbFileInfo(info: FileIdBothDirectoryInformation, parentPath: String): MediaItem {

@@ -60,18 +60,31 @@ class CloudMediaRepository(private val context: Context) {
     }.stateIn(scope, SharingStarted.Eagerly, emptyList())
 
     val albums: StateFlow<List<AlbumItem>> = _allItems.map { items ->
-        items.groupBy { it.albumName }
+        items.filter { !it.isFolder && (it.mimeType.startsWith("image/") || it.isVideo) }
+            .groupBy { it.albumName }
             .map { (name, groupItems) ->
                 AlbumItem(
                     name = name,
                     folderPath = "Photos/$name",
                     itemCount = groupItems.size,
-                    coverItem = groupItems.firstOrNull { !it.isFolder }
+                    coverItem = groupItems.firstOrNull()
                 )
             }
     }.stateIn(scope, SharingStarted.Eagerly, emptyList())
 
     val files: StateFlow<List<MediaItem>> = _allItems.asStateFlow()
+
+    val currentFolderFiles: StateFlow<List<MediaItem>> = combine(_allItems, _currentPath) { items, path ->
+        if (path.isBlank() || path == "/") {
+            items.filter { !it.path.contains('/') || it.path == it.name }
+        } else {
+            val cleanPath = path.trim('/')
+            items.filter { item ->
+                val parent = item.path.substringBeforeLast('/', "")
+                parent == cleanPath
+            }
+        }
+    }.stateIn(scope, SharingStarted.Eagerly, emptyList())
 
     val serverStats: StateFlow<ServerStats> = combine(_sambaConfig, tailscaleConfig) { smb, ts ->
         val ip = if (smb.host.isNotBlank()) tailscaleManager.getEffectiveServerIp(smb.host) else if (ts.nodeIp.isNotBlank()) ts.nodeIp else "-"
@@ -120,7 +133,9 @@ class CloudMediaRepository(private val context: Context) {
             val effectiveConfig = config.copy(host = effectiveHost)
 
             sambaManager.connect(effectiveConfig)
-            val fetchedItems = sambaManager.listFiles(_currentPath.value, effectiveConfig)
+            
+            val scannedItems = sambaManager.scanAllMediaFiles(maxDepth = 3)
+            val fetchedItems = if (scannedItems.isNotEmpty()) scannedItems else sambaManager.listFiles(_currentPath.value, effectiveConfig)
             _allItems.value = fetchedItems
 
             // Save to Room cache for fast offline access
@@ -134,6 +149,37 @@ class CloudMediaRepository(private val context: Context) {
         } finally {
             _isSyncing.value = false
         }
+    }
+
+    fun navigateToFolder(path: String) {
+        _currentPath.value = path
+    }
+
+    fun navigateUp() {
+        val current = _currentPath.value
+        if (current.isNotBlank()) {
+            val parent = current.trim('/').substringBeforeLast('/', "")
+            _currentPath.value = parent
+        }
+    }
+
+    suspend fun prepareLocalFile(item: MediaItem): java.io.File? = withContext(Dispatchers.IO) {
+        if (item.localUri != null) {
+            val path = item.localUri.removePrefix("file://")
+            val f = java.io.File(path)
+            if (f.exists()) return@withContext f
+        }
+        val config = _sambaConfig.value
+        if (config.host.isBlank()) return@withContext null
+
+        val effectiveHost = tailscaleManager.getEffectiveServerIp(config.host)
+        val effectiveConfig = config.copy(host = effectiveHost)
+
+        if (!sambaManager.isConnected) {
+            sambaManager.connect(effectiveConfig)
+        }
+
+        return@withContext sambaManager.downloadFileToCache(item.path, item.name, item.sizeBytes)
     }
 
     suspend fun logoutSamba() = withContext(Dispatchers.IO) {

@@ -26,12 +26,17 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FilesScreen(
     files: List<MediaItem>,
+    currentPath: String = "",
     isSyncing: Boolean,
+    onFolderClick: (MediaItem) -> Unit = {},
     onFileClick: (MediaItem) -> Unit,
+    onNavigateUp: () -> Unit = {},
     onDeleteFile: (MediaItem) -> Unit,
     onRenameFile: (MediaItem, String) -> Unit,
     modifier: Modifier = Modifier
@@ -45,14 +50,45 @@ fun FilesScreen(
     val filteredFiles = remember(files, sortType) {
         val cleanList = files.filter { !it.name.startsWith(".") }
         when (sortType) {
-            SortType.NAME -> cleanList.sortedBy { it.name.lowercase() }
-            SortType.DATE -> cleanList.sortedByDescending { it.lastModified }
-            SortType.SIZE -> cleanList.sortedByDescending { it.sizeBytes }
+            SortType.NAME -> cleanList.sortedWith(compareByDescending<MediaItem> { it.isFolder }.thenBy { it.name.lowercase() })
+            SortType.DATE -> cleanList.sortedWith(compareByDescending<MediaItem> { it.isFolder }.thenByDescending { it.lastModified })
+            SortType.SIZE -> cleanList.sortedWith(compareByDescending<MediaItem> { it.isFolder }.thenByDescending { it.sizeBytes })
         }
     }
 
     Box(modifier = modifier.fillMaxSize()) {
         Column(modifier = Modifier.fillMaxSize()) {
+            // Folder Breadcrumb Bar
+            if (currentPath.isNotBlank()) {
+                Surface(
+                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 8.dp, vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        IconButton(onClick = onNavigateUp) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                contentDescription = "Go Up Directory",
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                        Text(
+                            text = "Root / ${currentPath.replace("/", " / ")}",
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            modifier = Modifier.weight(1f),
+                            maxLines = 1
+                        )
+                    }
+                }
+            }
+
             // Sorting Header Bar
             Row(
                 modifier = Modifier
@@ -109,7 +145,7 @@ fun FilesScreen(
                     items(filteredFiles, key = { it.id }) { item ->
                         FileListItem(
                             item = item,
-                            onClick = { onFileClick(item) },
+                            onClick = { if (item.isFolder) onFolderClick(item) else onFileClick(item) },
                             onMoreClick = { selectedItemForAction = item }
                         )
                     }

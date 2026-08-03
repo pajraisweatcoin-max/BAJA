@@ -39,11 +39,14 @@ import androidx.media3.ui.PlayerView
 import com.example.core.model.MediaItem
 import kotlinx.coroutines.delay
 
+import java.io.File
+
 @OptIn(UnstableApi::class)
 @Composable
 fun VideoPlayerScreen(
     videoItem: MediaItem,
     onClose: () -> Unit,
+    onPrepareFile: suspend (MediaItem) -> File? = { null },
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -53,12 +56,30 @@ fun VideoPlayerScreen(
     var durationMs by remember { mutableLongStateOf(videoItem.durationSeconds?.times(1000L) ?: 60_000L) }
     var isPlayerError by remember { mutableStateOf(false) }
 
-    val rawUri = videoItem.localUri ?: videoItem.thumbnailUrl ?: if (videoItem.path.startsWith("http") || videoItem.path.startsWith("file")) videoItem.path else null
-    val exoPlayer = remember(rawUri) {
-        if (rawUri != null) {
+    var videoUri by remember(videoItem.id) {
+        mutableStateOf<Uri?>(
+            videoItem.localUri?.let { Uri.parse(it) }
+                ?: if (videoItem.path.startsWith("http") || videoItem.path.startsWith("file")) Uri.parse(videoItem.path) else null
+        )
+    }
+    var isLoadingVideo by remember(videoItem.id) { mutableStateOf(videoUri == null) }
+
+    LaunchedEffect(videoItem.id) {
+        if (videoUri == null) {
+            isLoadingVideo = true
+            val downloadedFile = onPrepareFile(videoItem)
+            if (downloadedFile != null && downloadedFile.exists()) {
+                videoUri = Uri.fromFile(downloadedFile)
+            }
+            isLoadingVideo = false
+        }
+    }
+
+    val exoPlayer = remember(videoUri) {
+        if (videoUri != null) {
             try {
                 ExoPlayer.Builder(context).build().apply {
-                    setMediaItem(Media3Item.fromUri(Uri.parse(rawUri)))
+                    setMediaItem(Media3Item.fromUri(videoUri!!))
                     prepare()
                     playWhenReady = true
                 }
@@ -67,7 +88,6 @@ fun VideoPlayerScreen(
                 null
             }
         } else {
-            isPlayerError = true
             null
         }
     }
@@ -126,7 +146,24 @@ fun VideoPlayerScreen(
                 showControls = !showControls
             }
     ) {
-        if (exoPlayer != null && !isPlayerError) {
+        if (isLoadingVideo) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color(0xFF0F0F14)),
+                contentAlignment = Alignment.Center
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    CircularProgressIndicator(color = Color(0xFF64B5F6))
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text(
+                        text = "Buffering ${videoItem.name} from BARRA CLOUD...",
+                        color = Color.White,
+                        fontSize = 14.sp
+                    )
+                }
+            }
+        } else if (exoPlayer != null && !isPlayerError) {
             AndroidView(
                 factory = { ctx ->
                     PlayerView(ctx).apply {
