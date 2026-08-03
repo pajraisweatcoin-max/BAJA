@@ -1,0 +1,6 @@
+{
+  "name": "BARRA CLOUD",
+  "description": "Galeri Media & Hybrid File Manager untuk server media pribadi BARRA CLOUD",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
