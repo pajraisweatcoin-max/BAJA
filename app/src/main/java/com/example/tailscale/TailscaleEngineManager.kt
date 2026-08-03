@@ -110,11 +110,14 @@ class TailscaleEngineManager(private val context: Context) {
     }
 
     fun getEffectiveServerIp(configuredHost: String): String {
-        val state = _tailscaleState.value
-        return if (state.enabled && state.connectionState == TailscaleConnectionState.CONNECTED) {
-            state.nodeIp.ifEmpty { configuredHost }
-        } else {
-            configuredHost
+        val trimmedHost = configuredHost.trim()
+        if (trimmedHost.isNotBlank()) {
+            return trimmedHost
         }
+        val state = _tailscaleState.value
+        if (state.enabled && state.nodeIp.isNotBlank()) {
+            return state.nodeIp.trim()
+        }
+        return ""
     }
 }
