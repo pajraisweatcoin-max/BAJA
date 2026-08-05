@@ -1,6 +1,0 @@
-{
-  "name": "BARRA CLOUD",
-  "description": "Klien SSH/SFTP media super cepat dengan sistem thumbnail SHA-1, Tailscale mesh VPN, dan file manager.",
-  "requestFramePermissions": [],
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
-}
