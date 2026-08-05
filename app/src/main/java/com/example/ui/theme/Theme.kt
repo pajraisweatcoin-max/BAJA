@@ -5,45 +5,32 @@ import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 
-private val BarraDarkColorScheme = darkColorScheme(
-    primary = BarraCyanPrimary,
+private val SpeedTestColorScheme = darkColorScheme(
+    primary = NeonCyan,
     onPrimary = Color.Black,
-    primaryContainer = BarraCyanVariant,
-    onPrimaryContainer = Color.White,
-    secondary = BarraAmberFolder,
+    primaryContainer = Color(0xFF003642),
+    onPrimaryContainer = NeonCyan,
+    secondary = NeonGreen,
     onSecondary = Color.Black,
-    background = BarraDarkBg,
-    onBackground = BarraTextPrimary,
-    surface = BarraCardBg,
-    onSurface = BarraTextPrimary,
-    surfaceVariant = BarraCardBorder,
-    onSurfaceVariant = BarraTextSecondary
-)
-
-private val BarraOledColorScheme = darkColorScheme(
-    primary = BarraCyanPrimary,
-    onPrimary = Color.Black,
-    primaryContainer = BarraCyanVariant,
-    onPrimaryContainer = Color.White,
-    secondary = BarraAmberFolder,
-    onSecondary = Color.Black,
-    background = BarraOledBg,
-    onBackground = BarraTextPrimary,
-    surface = Color(0xFF0F141C),
-    onSurface = BarraTextPrimary,
-    surfaceVariant = Color(0xFF1E2631),
-    onSurfaceVariant = BarraTextSecondary
+    secondaryContainer = Color(0xFF00381C),
+    onSecondaryContainer = NeonGreen,
+    tertiary = NeonPurple,
+    background = CyberDark,
+    onBackground = TextPrimary,
+    surface = CyberDarkSurface,
+    onSurface = TextPrimary,
+    surfaceVariant = CyberCard,
+    onSurfaceVariant = TextSecondary,
+    outline = CyberBorder,
+    error = NeonRed
 )
 
 @Composable
-fun BarraCloudTheme(
-    isOledMode: Boolean = false,
+fun SpeedTestTheme(
     content: @Composable () -> Unit
 ) {
-    val colorScheme = if (isOledMode) BarraOledColorScheme else BarraDarkColorScheme
-
     MaterialTheme(
-        colorScheme = colorScheme,
+        colorScheme = SpeedTestColorScheme,
         typography = Typography,
         content = content
     )

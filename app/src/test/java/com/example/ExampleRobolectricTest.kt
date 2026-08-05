@@ -16,14 +16,6 @@ class ExampleRobolectricTest {
   fun `read string from context`() {
     val context = ApplicationProvider.getApplicationContext<Context>()
     val appName = context.getString(R.string.app_name)
-    assertEquals("BARRA CLOUD", appName)
-  }
-
-  @Test
-  fun `verify SHA-1 hash calculation for thumbnail protocol`() {
-    val relPath = "/Foto Keluarga/IMG_001.jpg"
-    val hash = com.example.util.ThumbHashUtil.calculateSha1Hash(relPath)
-    assertEquals(40, hash.length)
-    assert(com.example.util.ThumbHashUtil.isThumbsPath("/mnt/exthdd/.thumbs/$hash.jpg"))
+    assertEquals("Tailscale Speed", appName)
   }
 }

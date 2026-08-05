@@ -22,6 +22,6 @@ dependencyResolutionManagement {
   }
 }
 
-rootProject.name = "BARRA CLOUD"
+rootProject.name = "Tailscale Speed Test"
 
 include(":app")

@@ -2,22 +2,18 @@ package com.example.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
-val BarraDarkBg = Color(0xFF0D1117)
-val BarraOledBg = Color(0xFF000000)
-val BarraCardBg = Color(0xFF161B22)
-val BarraCardBorder = Color(0xFF21262D)
+val CyberDark = Color(0xFF0B101D)
+val CyberDarkSurface = Color(0xFF131B2E)
+val CyberCard = Color(0xFF1B263E)
+val CyberBorder = Color(0xFF283A5E)
 
-val BarraCyanPrimary = Color(0xFF38BDF8)
-val BarraCyanVariant = Color(0xFF0284C7)
-val BarraAmberFolder = Color(0xFFF59E0B)
+val NeonCyan = Color(0xFF00E5FF)
+val NeonGreen = Color(0xFF00FF88)
+val NeonYellow = Color(0xFFFFD600)
+val NeonRed = Color(0xFFFF3366)
+val NeonPurple = Color(0xFFA060FF)
 
-val BarraTextPrimary = Color(0xFFF0F6FC)
-val BarraTextSecondary = Color(0xFF8B949E)
-val BarraTerminalBg = Color(0xFF05080C)
-
-val LogInfoColor = Color(0xFF38BDF8)
-val LogSuccessColor = Color(0xFF4ADE80)
-val LogWarnColor = Color(0xFFFBBF24)
-val LogErrorColor = Color(0xFFF87171)
-val LogDebugColor = Color(0xFF9CA3AF)
+val TextPrimary = Color(0xFFF0F4FF)
+val TextSecondary = Color(0xFF8A9BBA)
+val TextMuted = Color(0xFF536585)
 

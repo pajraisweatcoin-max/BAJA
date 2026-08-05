@@ -7,166 +7,182 @@ import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.MaterialTheme
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.Router
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Speed
+import androidx.compose.material3.Icon
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SnackbarHost
-import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.example.model.AppThemeMode
-import com.example.model.BarraTab
-import com.example.ui.components.BarraBottomNavBar
-import com.example.ui.components.BarraTopAppBar
-import com.example.ui.components.MediaViewerModal
-import com.example.ui.screens.FileManagerView
-import com.example.ui.screens.HomeView
-import com.example.ui.screens.PhotoView
-import com.example.ui.screens.SettingsView
-import com.example.ui.screens.VideoView
-import com.example.ui.theme.BarraCloudTheme
-import com.example.viewmodel.BarraCloudViewModel
-import kotlinx.coroutines.launch
+import com.example.ui.screens.HistoryScreen
+import com.example.ui.screens.PeersScreen
+import com.example.ui.screens.SettingsScreen
+import com.example.ui.screens.SpeedTestScreen
+import com.example.ui.theme.CyberBorder
+import com.example.ui.theme.CyberCard
+import com.example.ui.theme.CyberDark
+import com.example.ui.theme.NeonCyan
+import com.example.ui.theme.SpeedTestTheme
+import com.example.ui.theme.TextMuted
+import com.example.ui.theme.TextPrimary
+import com.example.ui.viewmodel.SpeedTestViewModel
 
 class MainActivity : ComponentActivity() {
 
-    private val viewModel: BarraCloudViewModel by viewModels()
+    private val viewModel: SpeedTestViewModel by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-        setContent {
-            val themeMode by viewModel.themeMode.collectAsStateWithLifecycle()
-            val isOledMode = themeMode == AppThemeMode.OLED
 
-            BarraCloudTheme(isOledMode = isOledMode) {
-                BarraCloudApp(viewModel = viewModel)
+        setContent {
+            SpeedTestTheme {
+                MainAppContent(viewModel = viewModel)
             }
         }
     }
 }
 
 @Composable
-fun BarraCloudApp(viewModel: BarraCloudViewModel) {
-    val activeTab by viewModel.activeTab.collectAsStateWithLifecycle()
-    val gridColumnCount by viewModel.gridColumnCount.collectAsStateWithLifecycle()
-    val themeMode by viewModel.themeMode.collectAsStateWithLifecycle()
-    val isConnected by viewModel.isConnected.collectAsStateWithLifecycle()
-    val isRefreshing by viewModel.isRefreshing.collectAsStateWithLifecycle()
-    val connectionStatusText by viewModel.connectionStatusText.collectAsStateWithLifecycle()
+fun MainAppContent(viewModel: SpeedTestViewModel) {
+    var selectedTab by remember { mutableIntStateOf(0) }
 
-    val mediaList by viewModel.mediaList.collectAsStateWithLifecycle()
-    val selectedMedia by viewModel.selectedMedia.collectAsStateWithLifecycle()
-
-    val currentFilePath by viewModel.currentFilePath.collectAsStateWithLifecycle()
-    val fileDirectoryNodes by viewModel.fileDirectoryNodes.collectAsStateWithLifecycle()
-
-    val formattedCacheSize by viewModel.formattedCacheSize.collectAsStateWithLifecycle()
-    val terminalLogs by viewModel.terminalLogs.collectAsStateWithLifecycle()
-    val sftpConfig by viewModel.sftpConfig.collectAsStateWithLifecycle()
-    val tailscaleStatus by viewModel.tailscaleStatus.collectAsStateWithLifecycle()
-
-    val snackbarHostState = remember { SnackbarHostState() }
-    val scope = rememberCoroutineScope()
+    val engineState by viewModel.engineState.collectAsStateWithLifecycle()
+    val progress by viewModel.progress.collectAsStateWithLifecycle()
+    val selectedNode by viewModel.selectedNode.collectAsStateWithLifecycle()
+    val peersList by viewModel.peers.collectAsStateWithLifecycle()
+    val historyRecords by viewModel.historyRecords.collectAsStateWithLifecycle()
 
     Scaffold(
         modifier = Modifier
             .fillMaxSize()
-            .testTag("main_scaffold"),
-        snackbarHost = { SnackbarHost(snackbarHostState) },
-        topBar = {
-            BarraTopAppBar(
-                connectionStatus = connectionStatusText,
-                isConnected = isConnected,
-                onRefresh = { viewModel.refreshAllData() },
-                onOpenSettings = { viewModel.setTab(BarraTab.SETTINGS) }
-            )
-        },
+            .background(CyberDark),
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
         bottomBar = {
-            BarraBottomNavBar(
-                activeTab = activeTab,
-                onTabSelected = { viewModel.setTab(it) }
-            )
+            NavigationBar(
+                containerColor = CyberCard,
+                contentColor = TextPrimary,
+                tonalElevation = 8.dp,
+                modifier = Modifier
+                    .navigationBarsPadding()
+                    .testTag("bottom_navigation_bar")
+            ) {
+                NavigationBarItem(
+                    selected = selectedTab == 0,
+                    onClick = { selectedTab = 0 },
+                    icon = { Icon(Icons.Default.Speed, contentDescription = "Test Speed") },
+                    label = { Text("Speed Test", fontWeight = FontWeight.Bold) },
+                    colors = NavigationBarItemDefaults.colors(
+                        selectedIconColor = NeonCyan,
+                        selectedTextColor = NeonCyan,
+                        indicatorColor = NeonCyan.copy(alpha = 0.2f),
+                        unselectedIconColor = TextMuted,
+                        unselectedTextColor = TextMuted
+                    ),
+                    modifier = Modifier.testTag("nav_item_speed_test")
+                )
+
+                NavigationBarItem(
+                    selected = selectedTab == 1,
+                    onClick = { selectedTab = 1 },
+                    icon = { Icon(Icons.Default.Router, contentDescription = "Peers & DERP") },
+                    label = { Text("Peers", fontWeight = FontWeight.Bold) },
+                    colors = NavigationBarItemDefaults.colors(
+                        selectedIconColor = NeonCyan,
+                        selectedTextColor = NeonCyan,
+                        indicatorColor = NeonCyan.copy(alpha = 0.2f),
+                        unselectedIconColor = TextMuted,
+                        unselectedTextColor = TextMuted
+                    ),
+                    modifier = Modifier.testTag("nav_item_peers")
+                )
+
+                NavigationBarItem(
+                    selected = selectedTab == 2,
+                    onClick = { selectedTab = 2 },
+                    icon = { Icon(Icons.Default.History, contentDescription = "Riwayat") },
+                    label = { Text("Riwayat", fontWeight = FontWeight.Bold) },
+                    colors = NavigationBarItemDefaults.colors(
+                        selectedIconColor = NeonCyan,
+                        selectedTextColor = NeonCyan,
+                        indicatorColor = NeonCyan.copy(alpha = 0.2f),
+                        unselectedIconColor = TextMuted,
+                        unselectedTextColor = TextMuted
+                    ),
+                    modifier = Modifier.testTag("nav_item_history")
+                )
+
+                NavigationBarItem(
+                    selected = selectedTab == 3,
+                    onClick = { selectedTab = 3 },
+                    icon = { Icon(Icons.Default.Settings, contentDescription = "Pengaturan") },
+                    label = { Text("Pengaturan", fontWeight = FontWeight.Bold) },
+                    colors = NavigationBarItemDefaults.colors(
+                        selectedIconColor = NeonCyan,
+                        selectedTextColor = NeonCyan,
+                        indicatorColor = NeonCyan.copy(alpha = 0.2f),
+                        unselectedIconColor = TextMuted,
+                        unselectedTextColor = TextMuted
+                    ),
+                    modifier = Modifier.testTag("nav_item_settings")
+                )
+            }
         }
     ) { innerPadding ->
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
-                .background(MaterialTheme.colorScheme.background)
+                .background(CyberDark)
         ) {
-            when (activeTab) {
-                BarraTab.HOME -> {
-                    HomeView(
-                        mediaList = mediaList,
-                        gridColumnCount = gridColumnCount,
-                        isRefreshing = isRefreshing,
-                        cacheManager = viewModel.cacheManager,
-                        onMediaClick = { viewModel.selectMedia(it) }
-                    )
-                }
-                BarraTab.PHOTO -> {
-                    PhotoView(
-                        mediaList = mediaList,
-                        gridColumnCount = gridColumnCount,
-                        cacheManager = viewModel.cacheManager,
-                        onMediaClick = { viewModel.selectMedia(it) }
-                    )
-                }
-                BarraTab.VIDEO -> {
-                    VideoView(
-                        mediaList = mediaList,
-                        gridColumnCount = gridColumnCount,
-                        cacheManager = viewModel.cacheManager,
-                        onMediaClick = { viewModel.selectMedia(it) }
-                    )
-                }
-                BarraTab.FILE -> {
-                    FileManagerView(
-                        currentPath = currentFilePath,
-                        directoryNodes = fileDirectoryNodes,
-                        onFolderClick = { viewModel.loadDirectory(it) },
-                        onNavigateUp = { viewModel.navigateUpDirectory() },
-                        onUploadClick = {
-                            scope.launch {
-                                snackbarHostState.showSnackbar("Upload file SFTP ke $currentFilePath siap dipicu.")
-                            }
-                        }
-                    )
-                }
-                BarraTab.SETTINGS -> {
-                    SettingsView(
-                        config = sftpConfig,
-                        tailscaleStatus = tailscaleStatus,
-                        gridColumns = gridColumnCount,
-                        themeMode = themeMode,
-                        formattedCacheSize = formattedCacheSize,
-                        logs = terminalLogs,
-                        onUpdateConfig = { viewModel.updateConfig(it) },
-                        onConnectTailscale = { authKey, targetIp, nodeName, callback ->
-                            viewModel.connectTailscale(authKey, targetIp, nodeName, callback)
-                        },
-                        onDisconnectTailscale = { viewModel.disconnectTailscale() },
-                        onTestConnection = { callback -> viewModel.testConnection(callback) },
-                        onSetGridColumns = { viewModel.setGridColumns(it) },
-                        onSetThemeMode = { viewModel.setThemeMode(it) },
-                        onClearCache = { viewModel.clearCache() },
-                        onClearLogs = { viewModel.clearLogs() }
-                    )
-                }
+            when (selectedTab) {
+                0 -> SpeedTestScreen(
+                    engineState = engineState,
+                    progress = progress,
+                    selectedNode = selectedNode,
+                    peersList = peersList,
+                    onSelectNode = { viewModel.selectTargetNode(it) },
+                    onStartTest = { viewModel.startSpeedTest() },
+                    onCancelTest = { viewModel.cancelSpeedTest() },
+                    onUpdateAuthKey = { key, tailnet -> viewModel.updateAuthKey(key, tailnet) }
+                )
+                1 -> PeersScreen(
+                    peers = peersList,
+                    selectedNode = selectedNode,
+                    onSelectNode = { viewModel.selectTargetNode(it) },
+                    onRefreshPing = { viewModel.refreshPeerLatencies() },
+                    onAddCustomPeer = { name, ip, location -> viewModel.addCustomPeer(name, ip, location) }
+                )
+                2 -> HistoryScreen(
+                    records = historyRecords,
+                    onDeleteRecord = { viewModel.deleteRecord(it) },
+                    onClearAll = { viewModel.clearHistory() }
+                )
+                3 -> SettingsScreen(
+                    engineState = engineState,
+                    onUpdateAuthKey = { key, tailnet -> viewModel.updateAuthKey(key, tailnet) },
+                    onToggleServer = { viewModel.toggleEmbeddedServer() }
+                )
             }
-
-            // Fullscreen Preview Streaming Modal
-            MediaViewerModal(
-                item = selectedMedia,
-                onDismiss = { viewModel.selectMedia(null) }
-            )
         }
     }
 }

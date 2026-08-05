@@ -1,6 +1,6 @@
 {
-  "name": "BARRA CLOUD",
-  "description": "Klien SSH/SFTP media super cepat dengan sistem thumbnail SHA-1, Tailscale mesh VPN, dan file manager.",
+  "name": "Tailscale Speed Test",
+  "description": "Aplikasi speed test latensi dan throughput jaringan privat dengan embedded engine Tailscale, DERP relay benchmark, dan Room history.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

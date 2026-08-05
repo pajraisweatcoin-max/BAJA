@@ -13,9 +13,15 @@
                 android:endX="108"
                 android:endY="108"
                 android:type="linear">
-                <item android:color="#0D1117" android:offset="0.0" />
-                <item android:color="#161B22" android:offset="1.0" />
+                <item android:color="#0A101D" android:offset="0.0" />
+                <item android:color="#002B49" android:offset="1.0" />
             </gradient>
         </aapt:attr>
     </path>
+    <!-- Background grid lines for cyber feel -->
+    <path
+        android:fillColor="#00000000"
+        android:pathData="M18,0V108 M36,0V108 M54,0V108 M72,0V108 M90,0V108 M0,18H108 M0,36H108 M0,54H108 M0,72H108 M0,90H108"
+        android:strokeWidth="0.5"
+        android:strokeColor="#1A3B5C" />
 </vector>
