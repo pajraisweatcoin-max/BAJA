@@ -1,14 +1,13 @@
-package com.example.data.db
+package com.example.data.local
 
 import android.content.Context
 import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
-import com.example.data.model.SpeedTestRecord
 
-@Database(entities = [SpeedTestRecord::class], version = 1, exportSchema = false)
+@Database(entities = [MediaEntity::class], version = 1, exportSchema = false)
 abstract class AppDatabase : RoomDatabase() {
-    abstract fun speedTestDao(): SpeedTestDao
+    abstract fun mediaDao(): MediaDao
 
     companion object {
         @Volatile
@@ -19,7 +18,7 @@ abstract class AppDatabase : RoomDatabase() {
                 val instance = Room.databaseBuilder(
                     context.applicationContext,
                     AppDatabase::class.java,
-                    "tailscale_speed_db"
+                    "barra_cloud_db"
                 ).fallbackToDestructiveMigration().build()
                 INSTANCE = instance
                 instance

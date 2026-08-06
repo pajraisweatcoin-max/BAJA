@@ -14,7 +14,7 @@ android {
   compileSdk { version = release(36) { minorApiLevel = 1 } }
 
   defaultConfig {
-    applicationId = "com.aistudio.tailscale.speedtest.app"
+    applicationId = "com.aistudio.barracloud.x9k2p"
     minSdk = 24
     targetSdk = 36
     versionCode = 1
@@ -26,16 +26,36 @@ android {
   signingConfigs {
     create("release") {
       val keystorePath = System.getenv("KEYSTORE_PATH") ?: "${rootDir}/my-upload-key.jks"
-      storeFile = file(keystorePath)
-      storePassword = System.getenv("STORE_PASSWORD")
-      keyAlias = "upload"
-      keyPassword = System.getenv("KEY_PASSWORD")
+      val keystoreFile = file(keystorePath)
+      val storePass = System.getenv("STORE_PASSWORD")
+      val keyPass = System.getenv("KEY_PASSWORD")
+      if (keystoreFile.exists() && !storePass.isNullOrEmpty() && !keyPass.isNullOrEmpty()) {
+        storeFile = keystoreFile
+        storePassword = storePass
+        keyAlias = System.getenv("KEY_ALIAS") ?: "upload"
+        keyPassword = keyPass
+      } else {
+        val localDebugKs = file("${rootDir}/debug.keystore")
+        if (localDebugKs.exists()) {
+          storeFile = localDebugKs
+          storePassword = "android"
+          keyAlias = "androiddebugkey"
+          keyPassword = "android"
+        } else {
+          initWith(getByName("debug"))
+        }
+      }
     }
     create("debugConfig") {
-      storeFile = file("${rootDir}/debug.keystore")
-      storePassword = "android"
-      keyAlias = "androiddebugkey"
-      keyPassword = "android"
+      val localDebugKs = file("${rootDir}/debug.keystore")
+      if (localDebugKs.exists()) {
+        storeFile = localDebugKs
+        storePassword = "android"
+        keyAlias = "androiddebugkey"
+        keyPassword = "android"
+      } else {
+        initWith(getByName("debug"))
+      }
     }
   }
 
@@ -57,10 +77,6 @@ android {
     buildConfig = true
   }
   testOptions { unitTests { isIncludeAndroidResources = true } }
-  dependenciesInfo {
-    includeInApk = false
-    includeInBundle = true
-  }
 }
 
 // Configure the Secrets Gradle Plugin to use .env and .env.example files
@@ -68,7 +84,6 @@ android {
 secrets {
   propertiesFileName = ".env"
   defaultPropertiesFileName = ".env.example"
-  ignoreList.add("FIREBASE_APPCHECK_DEBUG_TOKEN")
 }
 
 googleServices { missingGoogleServicesStrategy = MissingGoogleServicesStrategy.WARN }
@@ -95,10 +110,11 @@ dependencies {
   implementation(libs.androidx.lifecycle.runtime.compose)
   implementation(libs.androidx.lifecycle.runtime.ktx)
   implementation(libs.androidx.lifecycle.viewmodel.compose)
+  implementation("androidx.lifecycle:lifecycle-process:2.8.7")
   implementation(libs.androidx.navigation.compose)
   implementation(libs.androidx.room.ktx)
   implementation(libs.androidx.room.runtime)
-  // implementation(libs.coil.compose)
+  implementation(libs.coil.compose)
   implementation(libs.converter.moshi)
   implementation(libs.firebase.ai)
   // Uncomment to use Firestore:

@@ -2,187 +2,323 @@ package com.example
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
-import androidx.compose.foundation.background
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.History
-import androidx.compose.material.icons.filled.Router
+import androidx.compose.material.icons.filled.Cloud
+import androidx.compose.material.icons.filled.Folder
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Image
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.Speed
+import androidx.compose.material.icons.filled.Videocam
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.unit.dp
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
-import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.dp
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.example.ui.screens.HistoryScreen
-import com.example.ui.screens.PeersScreen
+import com.example.data.local.SecureStorage
+import com.example.ui.components.MediaDetailViewer
+import com.example.ui.screens.FileManagerScreen
+import com.example.ui.screens.HomeScreen
+import com.example.ui.screens.PhotosScreen
 import com.example.ui.screens.SettingsScreen
-import com.example.ui.screens.SpeedTestScreen
-import com.example.ui.theme.CyberBorder
-import com.example.ui.theme.CyberCard
-import com.example.ui.theme.CyberDark
-import com.example.ui.theme.NeonCyan
-import com.example.ui.theme.SpeedTestTheme
-import com.example.ui.theme.TextMuted
-import com.example.ui.theme.TextPrimary
-import com.example.ui.viewmodel.SpeedTestViewModel
+import com.example.ui.screens.VideosScreen
+import com.example.ui.theme.MyApplicationTheme
+import com.example.ui.viewmodel.MainViewModel
+import com.example.ui.viewmodel.SettingsViewModel
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.TextButton
+import com.example.util.AppLifecycleManager
+
+sealed class TabScreen(val route: String, val title: String, val icon: ImageVector) {
+    object Home : TabScreen("home", "Home", Icons.Default.Home)
+    object Photos : TabScreen("photos", "Foto", Icons.Default.Image)
+    object Videos : TabScreen("videos", "Video", Icons.Default.Videocam)
+    object Files : TabScreen("files", "File", Icons.Default.Folder)
+}
 
 class MainActivity : ComponentActivity() {
 
-    private val viewModel: SpeedTestViewModel by viewModels()
+    private val mainViewModel: MainViewModel by viewModels()
+    private val settingsViewModel: SettingsViewModel by viewModels()
+    private lateinit var lifecycleManager: AppLifecycleManager
 
+    @OptIn(ExperimentalMaterial3Api::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
+        lifecycleManager = AppLifecycleManager.getInstance(this)
+        lifecycleManager.initObserver()
+
         setContent {
-            SpeedTestTheme {
-                MainAppContent(viewModel = viewModel)
+            val config by settingsViewModel.config.collectAsState()
+            val showMissingDialog by lifecycleManager.showTailscaleMissingDialog.collectAsState()
+            val isDarkTheme = when (config.appTheme) {
+                "DARK" -> true
+                "LIGHT" -> false
+                else -> isSystemInDarkTheme()
             }
+
+            MyApplicationTheme(darkTheme = isDarkTheme) {
+                val snackbarHostState = remember { SnackbarHostState() }
+                var selectedTabIndex by remember { mutableIntStateOf(0) }
+                var isSettingsOpen by remember { mutableStateOf(false) }
+
+                val mainSnackbar by mainViewModel.snackbarMessage.collectAsState()
+                val settingsSnackbar by settingsViewModel.userMessage.collectAsState()
+
+                val secureStorage = remember { SecureStorage(this@MainActivity) }
+                val authCookie = secureStorage.getAuthCookie()
+
+                if (showMissingDialog) {
+                    AlertDialog(
+                        onDismissRequest = { lifecycleManager.dismissMissingDialog() },
+                        title = { Text("Tailscale Belum Terpasang") },
+                        text = { Text("Aplikasi Tailscale belum terpasang di perangkat ini. BARRA CLOUD memerlukan aplikasi Tailscale (com.tailscale.ipn) untuk integrasi VPN resmi.") },
+                        confirmButton = {
+                            TextButton(onClick = { lifecycleManager.dismissMissingDialog() }) {
+                                Text("Mengerti")
+                            }
+                        }
+                    )
+                }
+
+                LaunchedEffect(mainSnackbar) {
+                    mainSnackbar?.let {
+                        snackbarHostState.showSnackbar(it)
+                        mainViewModel.clearSnackbar()
+                    }
+                }
+
+                LaunchedEffect(settingsSnackbar) {
+                    settingsSnackbar?.let {
+                        snackbarHostState.showSnackbar(it)
+                        settingsViewModel.clearUserMessage()
+                    }
+                }
+
+                val tabs = listOf(TabScreen.Home, TabScreen.Photos, TabScreen.Videos, TabScreen.Files)
+                val selectedMedia by mainViewModel.selectedMedia.collectAsState()
+                val currentPath by mainViewModel.currentPath.collectAsState()
+
+                // Global System Back Button Handling
+                if (!isSettingsOpen && selectedMedia == null) {
+                    if (selectedTabIndex == 3 && currentPath != "/") {
+                        BackHandler {
+                            mainViewModel.navigateUpDirectory()
+                        }
+                    } else if (selectedTabIndex != 0) {
+                        BackHandler {
+                            selectedTabIndex = 0
+                        }
+                    }
+                }
+
+                if (isSettingsOpen) {
+                    val status by settingsViewModel.connectionStatus.collectAsState()
+                    val cacheSizeText by settingsViewModel.cacheSize.collectAsState()
+                    val logs by settingsViewModel.logs.collectAsState()
+                    val connectionLogs by settingsViewModel.connectionLogs.collectAsState()
+
+                    SettingsScreen(
+                        config = config,
+                        status = status,
+                        cacheSizeText = cacheSizeText,
+                        logs = logs,
+                        connectionLogs = connectionLogs,
+                        onConfigChange = { settingsViewModel.updateConfig(it) },
+                        onSaveAuth = { settingsViewModel.saveAndAuthenticate() },
+                        onTestHttp = { settingsViewModel.testHttpConnection() },
+                        onTestSftp = { settingsViewModel.testSftpConnection() },
+                        onConnectVpn = { settingsViewModel.connectTailscaleVpn() },
+                        onDisconnectVpn = { settingsViewModel.disconnectTailscaleVpn() },
+                        onAcquireLease = { settingsViewModel.acquireVpnLease() },
+                        onReleaseLease = { settingsViewModel.releaseVpnLease() },
+                        onOpenTailscale = { settingsViewModel.openTailscaleApp() },
+                        onClearCache = { settingsViewModel.clearThumbnailCache() },
+                        onClearLogs = { settingsViewModel.clearLogs() },
+                        onNavigateBack = {
+                            isSettingsOpen = false
+                            mainViewModel.checkSftpConnection()
+                            mainViewModel.refreshAllMedia()
+                        }
+                    )
+                } else {
+                    Scaffold(
+                        topBar = {
+                            TopAppBar(
+                                title = {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Icon(
+                                            imageVector = Icons.Default.Cloud,
+                                            contentDescription = null,
+                                            tint = MaterialTheme.colorScheme.primary
+                                        )
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Text(
+                                            text = "BARRA CLOUD",
+                                            style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold)
+                                        )
+                                    }
+                                },
+                                actions = {
+                                    IconButton(onClick = {
+                                        mainViewModel.startInitialConnectionSequence()
+                                    }) {
+                                        Icon(imageVector = Icons.Default.Refresh, contentDescription = "Refresh Data")
+                                    }
+
+                                    // Top Right Header Gear Icon for Settings
+                                    IconButton(onClick = { isSettingsOpen = true }) {
+                                        Icon(imageVector = Icons.Default.Settings, contentDescription = "Pengaturan")
+                                    }
+                                }
+                            )
+                        },
+                        bottomBar = {
+                            NavigationBar {
+                                tabs.forEachIndexed { index, tab ->
+                                    NavigationBarItem(
+                                        selected = selectedTabIndex == index,
+                                        onClick = {
+                                            mainViewModel.selectMedia(null)
+                                            selectedTabIndex = index
+                                        },
+                                        icon = { Icon(imageVector = tab.icon, contentDescription = tab.title) },
+                                        label = { Text(tab.title) }
+                                    )
+                                }
+                            }
+                        },
+                        snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
+                        modifier = Modifier.fillMaxSize()
+                    ) { innerPadding ->
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(innerPadding)
+                        ) {
+                            val timelineGroups by mainViewModel.timelineGroups.collectAsState()
+                            val allMediaItems by mainViewModel.allMedia.collectAsState()
+                            val photoItems by mainViewModel.photoMedia.collectAsState()
+                            val videoItems by mainViewModel.videoMedia.collectAsState()
+                            val fileItems by mainViewModel.fileManagerItems.collectAsState()
+                            val isLoading by mainViewModel.isLoading.collectAsState()
+                            val isSftpConnected by mainViewModel.isSftpConnected.collectAsState()
+                            val clipboardItem by mainViewModel.clipboardItem.collectAsState()
+
+                            when (selectedTabIndex) {
+                                0 -> HomeScreen(
+                                    groups = timelineGroups,
+                                    gridColumns = config.gridColumns,
+                                    isLoading = isLoading,
+                                    authCookie = authCookie,
+                                    getThumbnailUrl = { item -> mainViewModel.apiService.getStreamUrl(config.httpUrl, item.path, isThumb = true, authCookie = authCookie) },
+                                    onMediaClick = { item -> mainViewModel.selectMedia(item) },
+                                    onRefresh = { mainViewModel.refreshAllMedia() }
+                                )
+
+                                1 -> PhotosScreen(
+                                    photos = photoItems,
+                                    gridColumns = config.gridColumns,
+                                    isLoading = isLoading,
+                                    authCookie = authCookie,
+                                    getThumbnailUrl = { item -> mainViewModel.apiService.getStreamUrl(config.httpUrl, item.path, isThumb = true, authCookie = authCookie) },
+                                    onMediaClick = { item -> mainViewModel.selectMedia(item) }
+                                )
+
+                                2 -> VideosScreen(
+                                    videos = videoItems,
+                                    gridColumns = config.gridColumns,
+                                    isLoading = isLoading,
+                                    authCookie = authCookie,
+                                    getThumbnailUrl = { item -> mainViewModel.apiService.getStreamUrl(config.httpUrl, item.path, isThumb = true, authCookie = authCookie) },
+                                    onMediaClick = { item -> mainViewModel.selectMedia(item) }
+                                )
+
+                                3 -> FileManagerScreen(
+                                    currentPath = currentPath,
+                                    items = fileItems,
+                                    isLoading = isLoading,
+                                    isSftpConnected = isSftpConnected,
+                                    adminModeSftp = config.adminModeSftp,
+                                    hasClipboardItem = clipboardItem != null,
+                                    onNavigateDirectory = { path -> mainViewModel.loadDirectory(path) },
+                                    onNavigateUp = { mainViewModel.navigateUpDirectory() },
+                                    onMediaItemClick = { item -> mainViewModel.selectMedia(item) },
+                                    onUploadFile = { uri, name -> mainViewModel.uploadFileToCurrentDirectory(uri, name) },
+                                    onCopyItem = { item -> mainViewModel.copyItemToClipboard(item) },
+                                    onPasteItem = { mainViewModel.pasteItemFromClipboard() },
+                                    onMoveItem = { item, newName -> mainViewModel.moveItem(item, newName) },
+                                    onDeleteItem = { item -> mainViewModel.deleteMediaItem(item) },
+                                    onConnectClick = {
+                                        mainViewModel.checkSftpConnection()
+                                        mainViewModel.loadDirectory(mainViewModel.currentPath.value)
+                                    }
+                                )
+                            }
+
+                            // Fullscreen detail viewer overlay with swipe & zoom support
+                            if (selectedMedia != null) {
+                                val currentMediaList = when (selectedTabIndex) {
+                                    1 -> photoItems
+                                    2 -> videoItems
+                                    3 -> fileItems.filter { !it.isDir }
+                                    else -> if (allMediaItems.isNotEmpty()) allMediaItems else listOf(selectedMedia!!)
+                                }
+                                val initialIndex = currentMediaList.indexOfFirst { it.path == selectedMedia?.path }.coerceAtLeast(0)
+
+                                MediaDetailViewer(
+                                    mediaList = currentMediaList,
+                                    initialIndex = initialIndex,
+                                    authCookie = authCookie,
+                                    getMediaUrl = { item -> mainViewModel.apiService.getStreamUrl(config.httpUrl, item.path, isThumb = false, authCookie = authCookie) },
+                                    getThumbUrl = { item -> mainViewModel.apiService.getStreamUrl(config.httpUrl, item.path, isThumb = true, authCookie = authCookie) },
+                                    onDismiss = { mainViewModel.selectMedia(null) }
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        if (isFinishing) {
+            lifecycleManager.onAppExit()
         }
     }
 }
 
-@Composable
-fun MainAppContent(viewModel: SpeedTestViewModel) {
-    var selectedTab by remember { mutableIntStateOf(0) }
-
-    val engineState by viewModel.engineState.collectAsStateWithLifecycle()
-    val progress by viewModel.progress.collectAsStateWithLifecycle()
-    val selectedNode by viewModel.selectedNode.collectAsStateWithLifecycle()
-    val peersList by viewModel.peers.collectAsStateWithLifecycle()
-    val historyRecords by viewModel.historyRecords.collectAsStateWithLifecycle()
-
-    Scaffold(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(CyberDark),
-        contentWindowInsets = WindowInsets(0, 0, 0, 0),
-        bottomBar = {
-            NavigationBar(
-                containerColor = CyberCard,
-                contentColor = TextPrimary,
-                tonalElevation = 8.dp,
-                modifier = Modifier
-                    .navigationBarsPadding()
-                    .testTag("bottom_navigation_bar")
-            ) {
-                NavigationBarItem(
-                    selected = selectedTab == 0,
-                    onClick = { selectedTab = 0 },
-                    icon = { Icon(Icons.Default.Speed, contentDescription = "Test Speed") },
-                    label = { Text("Speed Test", fontWeight = FontWeight.Bold) },
-                    colors = NavigationBarItemDefaults.colors(
-                        selectedIconColor = NeonCyan,
-                        selectedTextColor = NeonCyan,
-                        indicatorColor = NeonCyan.copy(alpha = 0.2f),
-                        unselectedIconColor = TextMuted,
-                        unselectedTextColor = TextMuted
-                    ),
-                    modifier = Modifier.testTag("nav_item_speed_test")
-                )
-
-                NavigationBarItem(
-                    selected = selectedTab == 1,
-                    onClick = { selectedTab = 1 },
-                    icon = { Icon(Icons.Default.Router, contentDescription = "Peers & DERP") },
-                    label = { Text("Peers", fontWeight = FontWeight.Bold) },
-                    colors = NavigationBarItemDefaults.colors(
-                        selectedIconColor = NeonCyan,
-                        selectedTextColor = NeonCyan,
-                        indicatorColor = NeonCyan.copy(alpha = 0.2f),
-                        unselectedIconColor = TextMuted,
-                        unselectedTextColor = TextMuted
-                    ),
-                    modifier = Modifier.testTag("nav_item_peers")
-                )
-
-                NavigationBarItem(
-                    selected = selectedTab == 2,
-                    onClick = { selectedTab = 2 },
-                    icon = { Icon(Icons.Default.History, contentDescription = "Riwayat") },
-                    label = { Text("Riwayat", fontWeight = FontWeight.Bold) },
-                    colors = NavigationBarItemDefaults.colors(
-                        selectedIconColor = NeonCyan,
-                        selectedTextColor = NeonCyan,
-                        indicatorColor = NeonCyan.copy(alpha = 0.2f),
-                        unselectedIconColor = TextMuted,
-                        unselectedTextColor = TextMuted
-                    ),
-                    modifier = Modifier.testTag("nav_item_history")
-                )
-
-                NavigationBarItem(
-                    selected = selectedTab == 3,
-                    onClick = { selectedTab = 3 },
-                    icon = { Icon(Icons.Default.Settings, contentDescription = "Pengaturan") },
-                    label = { Text("Pengaturan", fontWeight = FontWeight.Bold) },
-                    colors = NavigationBarItemDefaults.colors(
-                        selectedIconColor = NeonCyan,
-                        selectedTextColor = NeonCyan,
-                        indicatorColor = NeonCyan.copy(alpha = 0.2f),
-                        unselectedIconColor = TextMuted,
-                        unselectedTextColor = TextMuted
-                    ),
-                    modifier = Modifier.testTag("nav_item_settings")
-                )
-            }
-        }
-    ) { innerPadding ->
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
-                .background(CyberDark)
-        ) {
-            when (selectedTab) {
-                0 -> SpeedTestScreen(
-                    engineState = engineState,
-                    progress = progress,
-                    selectedNode = selectedNode,
-                    peersList = peersList,
-                    onSelectNode = { viewModel.selectTargetNode(it) },
-                    onStartTest = { viewModel.startSpeedTest() },
-                    onCancelTest = { viewModel.cancelSpeedTest() },
-                    onUpdateAuthKey = { key, tailnet -> viewModel.updateAuthKey(key, tailnet) }
-                )
-                1 -> PeersScreen(
-                    peers = peersList,
-                    selectedNode = selectedNode,
-                    onSelectNode = { viewModel.selectTargetNode(it) },
-                    onRefreshPing = { viewModel.refreshPeerLatencies() },
-                    onAddCustomPeer = { name, ip, location -> viewModel.addCustomPeer(name, ip, location) }
-                )
-                2 -> HistoryScreen(
-                    records = historyRecords,
-                    onDeleteRecord = { viewModel.deleteRecord(it) },
-                    onClearAll = { viewModel.clearHistory() }
-                )
-                3 -> SettingsScreen(
-                    engineState = engineState,
-                    onUpdateAuthKey = { key, tailnet -> viewModel.updateAuthKey(key, tailnet) },
-                    onToggleServer = { viewModel.toggleEmbeddedServer() }
-                )
-            }
-        }
-    }
-}
