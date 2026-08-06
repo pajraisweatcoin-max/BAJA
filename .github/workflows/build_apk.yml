@@ -9,6 +9,7 @@ on:
     branches:
       - main
       - master
+  workflow_dispatch:
 
 jobs:
   build:
@@ -34,22 +35,19 @@ jobs:
             base64 -d debug.keystore.base64 > debug.keystore || true
           fi
 
-      - name: Generate Gradle Wrapper
-        run: gradle wrapper || true
-
       - name: Make Gradle Executable
         run: chmod +x gradlew || true
 
-      - name: Build APK
-        run: |
-          if [ -f "./gradlew" ]; then
-            ./gradlew assembleRelease --no-daemon || ./gradlew assembleDebug --no-daemon
-          else
-            gradle assembleRelease --no-daemon || gradle assembleDebug --no-daemon
-          fi
+      - name: Build Debug APK
+        run: ./gradlew assembleDebug --no-daemon
 
-      - name: Upload APK Artifact
+      - name: Build Release APK
+        run: ./gradlew assembleRelease --no-daemon
+        continue-on-error: true
+
+      - name: Upload APK Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: BarraCloud-APK
+          name: BarraCloud-APKs
           path: app/build/outputs/apk/**/*.apk
+
