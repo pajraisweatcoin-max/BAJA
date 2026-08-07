@@ -1,0 +1,6 @@
+{
+  "name": "SFTP File Manager",
+  "description": "Aplikasi File Manager SFTP/SSH lengkap untuk mengelola berkas server remote.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
